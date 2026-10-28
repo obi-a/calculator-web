@@ -104,6 +104,11 @@
             margin-top: 10px;
             font-weight: bold;
         }
+
+        :root { color-scheme: dark; --bg: #121212; --fg: #eee; --field: #222; }
+        :root.light { color-scheme: light; --bg: #fff; --fg: #111; --field: #f5f5f5; }
+        body { background: var(--bg); color: var(--fg); }
+        input, button { background: var(--field); color: inherit; border: 1px solid #777; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -123,6 +128,8 @@
         for the main title or headline. Search engines give significant weight to <h1> tags for SEO.
     -->
     
+    <button type="button" onclick="document.documentElement.classList.toggle('light')">Toggle theme</button>
+
     <div class="calculator">
         <!--
             <div> Element with "calculator" Class
