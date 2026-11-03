@@ -9,15 +9,12 @@ RUN apt-get update && \
    apt-get upgrade -y && \
    apt-get install -y --no-install-recommends gcc python3-dev libssl-dev && \
    rm -rf /var/lib/apt/lists/* && \
-   python -m pip install --upgrade pip 'setuptools>=78.1.1' wheel && \
+   python -m pip install --upgrade pip setuptools>=70.0.0 wheel && \
    groupadd -r appgroup && \
    useradd -r -g appgroup appuser
 
 COPY requirements.txt .
-# Keep pip's unused vendored libraries out of the application image.
-RUN python -m pip install --no-cache-dir -r requirements.txt && \
-   python -m pip check && \
-   python -m pip uninstall --yes pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 RUN chown -R appuser:appgroup /app
