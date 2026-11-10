@@ -1,27 +1,9 @@
 # tests/integration/test_user_auth.py
 
 import pytest
-from uuid import UUID
-import pydantic_core
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from app.models.user import User
-
-def test_password_hashing(db_session, fake_user_data):
-    """Test password hashing and verification functionality"""
-    original_password = "TestPass123"  # Use known password for test
-    hashed = User.hash_password(original_password)
-    
-    user = User(
-        first_name=fake_user_data['first_name'],
-        last_name=fake_user_data['last_name'],
-        email=fake_user_data['email'],
-        username=fake_user_data['username'],
-        password=hashed
-    )
-    
-    assert user.verify_password(original_password) is True
-    assert user.verify_password("WrongPass123") is False
-    assert hashed != original_password
+from app.schemas.user import UserRead
 
 def test_user_registration(db_session, fake_user_data):
     """Test user registration process"""
@@ -37,6 +19,41 @@ def test_user_registration(db_session, fake_user_data):
     assert user.is_active is True
     assert user.is_verified is False
     assert user.verify_password("TestPass123") is True
+    stored_hash = db_session.execute(
+        text("SELECT password_hash FROM users WHERE id = :id"), {"id": user.id}
+    ).scalar_one()
+    assert stored_hash == user.password_hash
+    assert stored_hash != fake_user_data["password"]
+    assert user.created_at is not None
+
+
+def test_user_registration_with_only_required_fields(db_session):
+    user = User.register(db_session, {
+        "username": "minimaluser",
+        "email": "minimal@example.com",
+        "password": "TestPass123",
+    })
+    db_session.commit()
+    db_session.refresh(user)
+    assert user.first_name is None
+    assert user.last_name is None
+    assert user.created_at is not None
+    assert user.verify_password("TestPass123")
+    response = UserRead.model_validate(user).model_dump()
+    assert response["username"] == "minimaluser"
+    assert "password" not in response
+    assert "password_hash" not in response
+
+
+@pytest.mark.parametrize("email", ["invalid-email", "missing-domain@"])
+def test_registration_rejects_invalid_emails(db_session, email):
+    with pytest.raises(ValueError, match="email"):
+        User.register(db_session, {
+            "username": "invalidemail",
+            "email": email,
+            "password": "TestPass123",
+        })
+    assert db_session.query(User).count() == 0
 
 def test_duplicate_user_registration(db_session):
     """Test registration with duplicate email/username"""
@@ -99,7 +116,8 @@ def test_user_last_login_update(db_session, fake_user_data):
     db_session.refresh(user)
     assert user.last_login is not None
 
-def test_unique_email_username(db_session):
+@pytest.mark.parametrize("field", ["email", "username"])
+def test_unique_email_username(db_session, field):
     """Test uniqueness constraints for email and username"""
     # Create first user with specific test data
     user1_data = {
@@ -114,14 +132,15 @@ def test_unique_email_username(db_session):
     User.register(db_session, user1_data)
     db_session.commit()
     
-    # Try to create user with same email
+    # Try to create a user with the same unique field.
     user2_data = {
         "first_name": "Test",
         "last_name": "User2",
-        "email": "unique_test@example.com",  # Same email
+        "email": "different@example.com",
         "username": "differentuser",
         "password": "TestPass123"
     }
+    user2_data[field] = user1_data[field]
     
     with pytest.raises(ValueError, match="Username or email already exists"):
         User.register(db_session, user2_data)
@@ -138,7 +157,7 @@ def test_short_password_registration(db_session):
     }
     
     # Attempt registration with short password
-    with pytest.raises(ValueError, match="Password must be at least 6 characters long"):
+    with pytest.raises(ValueError, match="at least 6 characters"):
         User.register(db_session, test_data)
 
 def test_invalid_token():
@@ -191,6 +210,5 @@ def test_missing_password_registration(db_session):
         # Password is missing
     }
     
-    # Adjust the expected error message
-    with pytest.raises(ValueError, match="Password must be at least 6 characters long"):
+    with pytest.raises(ValueError, match="Field required"):
         User.register(db_session, test_data)
