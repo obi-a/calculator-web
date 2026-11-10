@@ -1,15 +1,19 @@
 # Application dependencies. Required transitive packages are installed by pip.
 bcrypt==4.2.1
 email-validator==2.2.0
-fastapi==0.115.4
+fastapi==0.136.3
 Jinja2==3.1.4
 passlib==1.7.4
 psycopg2-binary==2.9.10
 pydantic==2.9.2
 pydantic-settings==2.7.1
-python-jose==3.3.0
+python-jose==3.5.0
 SQLAlchemy==2.0.36
 uvicorn==0.32.0
+
+# Security pins for dependencies of email-validator and FastAPI.
+dnspython==2.9.0
+starlette==1.3.1
 
 # Test dependencies.
 Faker==33.3.0
