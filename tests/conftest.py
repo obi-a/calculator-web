@@ -12,13 +12,12 @@ from contextlib import contextmanager
 import pytest
 import requests
 from faker import Faker
-from playwright.sync_api import sync_playwright, Browser, Page
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from playwright.sync_api import sync_playwright, Browser
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.database import Base, get_engine, get_sessionmaker
-from app.models.user import User
+from app.database import get_engine, get_sessionmaker
+from app.models.user import Base, User
 from app.config import settings
 from app.database_init import init_db, drop_db
 
@@ -36,8 +35,6 @@ logger = logging.getLogger(__name__)
 # ======================================================================================
 fake = Faker()
 Faker.seed(12345)
-
-logger.info(f"Using database URL: {settings.DATABASE_URL}")
 
 # Create an engine and sessionmaker based on DATABASE_URL using factory functions
 test_engine = get_engine(database_url=settings.DATABASE_URL)
@@ -60,6 +57,12 @@ def create_fake_user() -> Dict[str, str]:
         "username": fake.unique.user_name(),
         "password": fake.password(length=12)
     }
+
+def create_user_model(user_data: Dict[str, str]) -> User:
+    """Build a user with a password hash for persistence tests."""
+    attributes = user_data.copy()
+    password = attributes.pop("password")
+    return User(**attributes, password_hash=User.hash_password(password))
 
 @contextmanager
 def managed_db_session():
@@ -108,7 +111,7 @@ class ServerStartupError(Exception):
 # ======================================================================================
 # Primary Database Fixtures
 # ======================================================================================
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def setup_test_database(request):
     """
     Initialize the test database once per session:
@@ -142,7 +145,7 @@ def setup_test_database(request):
         logger.info("Dropped test database tables.")
 
 @pytest.fixture
-def db_session(request) -> Generator[Session, None, None]:
+def db_session(request, setup_test_database) -> Generator[Session, None, None]:
     """
     Provide a test-scoped database session.
     By default, truncates all tables after each test to ensure isolation,
@@ -152,18 +155,14 @@ def db_session(request) -> Generator[Session, None, None]:
     try:
         yield session
     finally:
-        logger.info("db_session teardown: about to truncate tables.")
-        preserve_db = request.config.getoption("--preserve-db")
-        if preserve_db:
-            logger.info("Skipping table truncation due to --preserve-db flag.")
-        else:
-            logger.info("Truncating all tables now.")
-            for table in reversed(Base.metadata.sorted_tables):
-                logger.info(f"Truncating table: {table}")
-                session.execute(table.delete())
-            session.commit()
-        session.close()
-        logger.info("db_session teardown: done.")
+        try:
+            session.rollback()
+            if not request.config.getoption("--preserve-db"):
+                for table in reversed(Base.metadata.sorted_tables):
+                    session.execute(table.delete())
+                session.commit()
+        finally:
+            session.close()
 
 # ======================================================================================
 # Test Data Fixtures
@@ -179,7 +178,7 @@ def test_user(db_session: Session) -> User:
     Create and return a single test user.
     """
     user_data = create_fake_user()
-    user = User(**user_data)
+    user = create_user_model(user_data)
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
@@ -204,7 +203,7 @@ def seed_users(db_session: Session, request) -> List[User]:
     users = []
     for _ in range(num_users):
         user_data = create_fake_user()
-        user = User(**user_data)
+        user = create_user_model(user_data)
         users.append(user)
         db_session.add(user)
 
@@ -319,13 +318,13 @@ Basic Examples:
 
 1. Test DB operations:
    def test_create_user(db_session):
-       user = User(username="test", email="test@example.com")
+       user = create_user_model(create_fake_user())
        db_session.add(user)
        db_session.commit()
 
 2. Using fake data:
    def test_with_fake_data(fake_user_data):
-       user = User(**fake_user_data)
+       user = create_user_model(fake_user_data)
        # proceed with test logic...
 
 3. Working with a test user:

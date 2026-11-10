@@ -3,13 +3,13 @@ from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-class UserResponse(BaseModel):
+class UserRead(BaseModel):
     """Schema for user response data"""
     id: UUID
     username: str
     email: EmailStr
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -22,7 +22,7 @@ class Token(BaseModel):
     """Schema for authentication token response"""
     access_token: str
     token_type: str = "bearer"
-    user: UserResponse
+    user: UserRead
 
     model_config = ConfigDict(
         json_schema_extra={
