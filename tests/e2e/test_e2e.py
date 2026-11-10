@@ -15,7 +15,7 @@ def test_hello_world(page, fastapi_server):
     that the server is running and serving the correct template.
     """
     # Navigate the browser to the homepage URL of the FastAPI application.
-    page.goto('http://localhost:8000')
+    page.goto(fastapi_server)
     
     # Use an assertion to check that the text within the first <h1> tag is exactly "Hello World".
     # If the text does not match, the test will fail.
@@ -31,7 +31,7 @@ def test_calculator_add(page, fastapi_server):
     that the result displayed is correct.
     """
     # Navigate the browser to the homepage URL of the FastAPI application.
-    page.goto('http://localhost:8000')
+    page.goto(fastapi_server)
     
     # Fill in the first number input field (with id 'a') with the value '10'.
     page.fill('#a', '10')
@@ -42,7 +42,7 @@ def test_calculator_add(page, fastapi_server):
     # Click the button that has the exact text "Add". This triggers the addition operation.
     page.click('button:text("Add")')
     
-    # Wait for the addition response to update the result div before checking its text.
+    # Wait for the request to finish and the page to display the result.
     expect(page.locator('#result')).to_have_text('Calculation Result: 15')
 
 @pytest.mark.e2e
@@ -56,7 +56,7 @@ def test_calculator_divide_by_zero(page, fastapi_server):
     operations and provides meaningful feedback to the user.
     """
     # Navigate the browser to the homepage URL of the FastAPI application.
-    page.goto('http://localhost:8000')
+    page.goto(fastapi_server)
     
     # Fill in the first number input field (with id 'a') with the value '10'.
     page.fill('#a', '10')
@@ -67,5 +67,5 @@ def test_calculator_divide_by_zero(page, fastapi_server):
     # Click the button that has the exact text "Divide". This triggers the division operation.
     page.click('button:text("Divide")')
     
-    # Wait for the error response to update the result div before checking its text.
+    # Wait for the request to finish and the page to display the error.
     expect(page.locator('#result')).to_have_text('Error: Cannot divide by zero!')
