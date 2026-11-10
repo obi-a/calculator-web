@@ -77,6 +77,27 @@ def test_user_create_valid():
     assert user_create.password == "SecurePass123"
 
 
+def test_user_create_with_only_required_fields():
+    user = UserCreate(username="johndoe", email="john@example.com", password="SecurePass123")
+    assert user.username == "johndoe"
+    assert user.first_name is None
+    assert user.last_name is None
+
+
+def test_user_create_requires_password():
+    with pytest.raises(ValidationError) as error:
+        UserCreate(username="johndoe", email="john@example.com")
+    assert error.value.errors()[0]["loc"] == ("password",)
+    assert error.value.errors()[0]["type"] == "missing"
+
+
+@pytest.mark.parametrize("password", [None, 123, [], {}, "", "short"])
+def test_user_create_rejects_invalid_password_values(password):
+    with pytest.raises(ValidationError) as error:
+        UserCreate(username="johndoe", email="john@example.com", password=password)
+    assert error.value.errors()[0]["loc"] == ("password",)
+
+
 def test_user_create_invalid_password():
     """Test UserCreate with invalid password."""
     data = {
