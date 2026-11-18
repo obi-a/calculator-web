@@ -51,7 +51,7 @@ jobs:
        run: |
          source venv/bin/activate
          pytest tests/unit/ --junitxml=test-results/unit.xml
-         pytest tests/integration/ --junitxml=test-results/integration.xml
+         pytest tests/integration/ --run-slow --junitxml=test-results/integration.xml
          pytest tests/e2e/ --junitxml=test-results/e2e.xml
 
  security:
