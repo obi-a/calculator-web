@@ -1,4 +1,11 @@
 # app/models/user.py
+"""
+User Model
+
+This module defines the User model which represents users in the system.
+Each user can have multiple calculations associated with them.
+"""
+
 from datetime import datetime, timedelta
 import uuid
 from typing import Optional, Dict, Any
@@ -23,6 +30,19 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 class User(Base):
+    """
+    User model representing a user in the system.
+
+    A user can create and own multiple calculations. This model uses UUID
+    for the primary key to ensure uniqueness across distributed systems.
+
+    Attributes:
+        id: Unique identifier for the user (UUID)
+        username: Unique username for the user
+        email: User's email address
+        created_at: Timestamp when the user was created
+        updated_at: Timestamp when the user was last updated
+    """
     __tablename__ = 'users'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
