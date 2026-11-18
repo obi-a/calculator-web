@@ -12,7 +12,7 @@ SQLAlchemy==2.0.36
 uvicorn==0.32.0
 
 # Security pins for dependencies of email-validator and FastAPI.
-dnspython==2.9.0
+dnspython==2.9.2
 starlette==1.3.1
 
 # Test dependencies.
