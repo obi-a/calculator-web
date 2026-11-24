@@ -17,15 +17,14 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from pydantic import ValidationError
 
+from app.config import settings
 from app.schemas.base import UserCreate
 from app.schemas.user import UserRead, Token
 
 Base = declarative_base()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate_error=True)
 
-# Move to config
-SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -67,6 +66,8 @@ class User(Base):
 
     def verify_password(self, plain_password: str) -> bool:
         """Verify a plain password against the hashed password."""
+        if len(plain_password.encode("utf-8")) > 72:
+            return False
         return pwd_context.verify(plain_password, self.password_hash)
 
     @staticmethod
@@ -75,13 +76,13 @@ class User(Base):
         to_encode = data.copy()
         expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         to_encode.update({"exp": expire})
-        return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=ALGORITHM)
 
     @staticmethod
     def verify_token(token: str) -> Optional[UUID]:
         """Verify and decode a JWT token."""
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
             return uuid.UUID(user_id) if user_id else None
         except (JWTError, ValueError):

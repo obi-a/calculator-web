@@ -24,6 +24,19 @@ def test_password_hashes_use_different_salts():
     assert User.hash_password("TestPass123") != User.hash_password("TestPass123")
 
 
+@pytest.mark.parametrize("password", ["Aa1" + "x" * 70, "Aa1" + "é" * 35])
+def test_hash_password_rejects_inputs_over_bcrypt_byte_limit(password):
+    with pytest.raises(ValueError, match="72"):
+        User.hash_password(password)
+
+
+@pytest.mark.parametrize("password", ["Aa1" + "x" * 69, "Aa1" + "é" * 34 + "x"])
+def test_password_verification_does_not_ignore_an_overlong_suffix(password):
+    user = User(password_hash=User.hash_password(password))
+    assert user.verify_password(password)
+    assert not user.verify_password(password + "!")
+
+
 def test_user_read_from_orm_excludes_passwords():
     user = User(
         id=uuid4(),

@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, ConfigDict
 
+from app.schemas.base import BcryptPassword
+
 class UserRead(BaseModel):
     """Schema for user response data"""
     id: UUID
@@ -53,7 +55,7 @@ class TokenData(BaseModel):
 class UserLogin(BaseModel):
     """Schema for user login"""
     username: str
-    password: str
+    password: BcryptPassword
 
     model_config = ConfigDict(
         json_schema_extra={
