@@ -1,15 +1,30 @@
 # app/auth/dependencies.py
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserRead
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_bearer_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> str:
+    """Accept the access token returned by the JSON login endpoint."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return credentials.credentials
 
 def get_current_user(
-    db,
-    token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db),
+    token: str = Depends(get_bearer_token),
 ) -> UserRead:
     """Dependency to get current user from JWT token."""
     credentials_exception = HTTPException(
