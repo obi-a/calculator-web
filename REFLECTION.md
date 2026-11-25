@@ -1,19 +1,37 @@
-# Module 11 Reflection
+# Module 12 Reflection
 
-I added a calculation model, validation schemas, and a factory that reuses
-the existing arithmetic functions. Each calculation stores two numbers, its type,
-and its owner's ID. The result is calculated when needed. Existing calculator and
-user features stayed the same.
+I connected the existing user and calculation models to HTTP endpoints for
+registration, login, and persistent calculation BREAD. The endpoints use the
+required `/users/...` URLs and Pydantic schemas. Calculations retain the existing
+two-operand design, with results computed on demand.
 
-The calculation and user models share the same SQLAlchemy base so the foreign key
-works correctly. Validation rejects invalid inputs and division by zero.
-PostgreSQL tests check that calculations are saved correctly and reference valid
-user records.
+One challenge was making JWT authentication work with both the database and the
+interactive API documentation. Login verifies bcrypt password hashes and returns
+the existing access-token response. The bearer dependency looks up the actual user
+record, so deleted users and inactive users cannot access calculations. Every
+calculation query includes the authenticated user's ID. Create and update requests
+also check the supplied `user_id` to prevent assigning calculations to another user.
 
-I also fixed the Docker health check to use the existing home page. GitHub Actions
-built the image, but the security scan found a vulnerable dnspython dependency.
-I updated it to version 2.9.2 to address that finding.
+Boundary checks exposed two validation gaps: bcrypt ignored password bytes after
+the first 72, and the email schema allowed values longer than the database column.
+Registration and login now enforce the 72-byte UTF-8 password limit, and email
+validation matches the 120-character column. Regression tests cover ASCII and
+multibyte passwords, an extra password suffix, and email lengths around the limit.
 
-The full local test run passed all 138 tests with 98% application coverage.
-After the dependency update, GitHub Actions passed all 138 tests, built the image,
-passed the security scan, and published the image to Docker Hub.
+The complete local run passed all 230 tests, including 88 API route tests and the
+slow integration tests, with 98% coverage for the `app` package. The Docker image
+also passed startup, registration, login, calculation BREAD, and original arithmetic
+checks without the source directory mounted into the container.
+Browser checks through the built-in Swagger UI verified registration, login,
+bearer authorization, and every BREAD operation.
+
+Local Docker verification also exposed a test-environment issue: the pinned older
+Playwright version could not install its fallback font packages on the current
+Debian image. The temporary verification container used the available Debian
+browser libraries instead. Application dependencies and the existing security
+pins were preserved.
+
+The existing GitHub Actions pipeline still runs tests, builds and scans the
+image, then publishes to Docker Hub after a successful push to `main`. It now
+tests pushes on every branch while keeping publication limited to pushes to
+`main`.
