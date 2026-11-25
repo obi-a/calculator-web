@@ -8,7 +8,7 @@
 Install Docker Desktop, then run from the project root:
 
 ```bash
-export JWT_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+export JWT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 docker compose up --build -d web
 ```
 
@@ -52,3 +52,23 @@ pytest tests/integration --run-slow
 pytest tests/integration/test_api_routes.py
 pytest tests/e2e
 ```
+
+## Manual checks with OpenAPI
+
+Start the application and open http://localhost:8000/docs. Use **Try it out**
+and **Execute** to check the endpoints:
+
+1. Register through `POST /users/register`; expect `201`. Save the returned user ID.
+2. Log in through `POST /users/login`; expect `200`. Copy `access_token` into
+   **Authorize**, entering only the token.
+3. Create a calculation through `POST /calculations` using:
+   `{"a":10,"b":2,"type":"add","user_id":"YOUR_USER_ID"}`.
+   Expect `201` with result `12`. Save the calculation ID.
+4. Call `GET /calculations` and `GET /calculations/{id}`; expect `200`
+   and the saved calculation.
+5. Update through `PUT /calculations/{id}` using:
+   `{"a":6,"b":7,"type":"multiply","user_id":"YOUR_USER_ID"}`.
+   Expect `200` with result `42`.
+6. Call `DELETE /calculations/{id}`; expect `204`. Reading it again should return `404`.
+
+A calculation with `"type":"divide"` and `"b":0` should return `400`.
